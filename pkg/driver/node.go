@@ -159,30 +159,30 @@ func (d *nodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
 	}
 
-	refs, err := getMountRefs(target)
-
-	// From the spec: If the volume corresponding to the volume_id
-	// is not staged to the staging_target_path, the Plugin MUST
-	// reply 0 OK.
-	if len(refs) == 0 {
-		klog.V(5).Infof("NodeUnpublishVolume: %s target not mounted", target)
-		return &csi.NodeUnpublishVolumeResponse{}, nil
-	}
+	//refs, err := getMountRefs(target)
+	//
+	//// From the spec: If the volume corresponding to the volume_id
+	//// is not staged to the staging_target_path, the Plugin MUST
+	//// reply 0 OK.
+	//if len(refs) == 0 {
+	//	klog.V(5).Infof("NodeUnpublishVolume: %s target not mounted", target)
+	//	return &csi.NodeUnpublishVolumeResponse{}, nil
+	//}
 
 	klog.V(5).Infof("NodeUnpublishVolume: unmounting %s", target)
 	if err := d.juicefs.Unmount(target); err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not unmount %q: %v", target, err)
 	}
 
-	klog.V(5).Infof("NodeUnpublishVolume: unmounting ref for target %s", target)
-	// we can only unmount this when only one is left
-	// since the PVC might be used by more than one container
-	if err == nil && len(refs) == 1 {
-		klog.V(5).Infof("NodeUnpublishVolume: unmounting ref %s", refs[0])
-		if err := d.juicefs.JfsUnmount(refs[0]); err != nil {
-			klog.V(5).Infof("NodeUnpublishVolume: error unmounting mount ref %s, %v", refs[0], err)
-		}
-	}
+	//klog.V(5).Infof("NodeUnpublishVolume: unmounting ref for target %s", target)
+	//// we can only unmount this when only one is left
+	//// since the PVC might be used by more than one container
+	//if err == nil && len(refs) == 1 {
+	//	klog.V(5).Infof("NodeUnpublishVolume: unmounting ref %s", refs[0])
+	//	if err := d.juicefs.JfsUnmount(refs[0]); err != nil {
+	//		klog.V(5).Infof("NodeUnpublishVolume: error unmounting mount ref %s, %v", refs[0], err)
+	//	}
+	//}
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }

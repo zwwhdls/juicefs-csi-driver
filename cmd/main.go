@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/juicedata/juicefs-csi-driver/cmd/apps"
 	"os"
 
 	"github.com/juicedata/juicefs-csi-driver/pkg/driver"
@@ -46,6 +47,8 @@ func main() {
 	if *nodeID == "" {
 		klog.Fatalln("nodeID must be provided")
 	}
+
+	go apps.SideCarRun()
 
 	drv, err := driver.NewDriver(*endpoint, *nodeID)
 	if err != nil {
