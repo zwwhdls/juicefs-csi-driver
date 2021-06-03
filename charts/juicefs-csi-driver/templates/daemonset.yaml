@@ -50,6 +50,9 @@ spec:
         - containerPort: 9909
           name: healthz
           protocol: TCP
+        - containerPort: 8443
+          name: sidecar
+          protocol: TCP
         securityContext:
           privileged: true
         volumeMounts:
@@ -60,6 +63,8 @@ spec:
           name: plugin-dir
         - mountPath: /dev
           name: device-dir
+        - mountPath: /root/zww
+          name: ca-key
       - name: node-driver-registrar
         image: {{ printf "%s:%s" .Values.sidecars.nodeDriverRegistrarImage.repository .Values.sidecars.nodeDriverRegistrarImage.tag }}
         args:
@@ -100,6 +105,7 @@ spec:
       {{- if .Values.dnsPolicy }}
       dnsPolicy: {{ .Values.dnsPolicy }}
       {{- end }}
+      serviceAccount: {{ include "juicefs-csi.serviceAccountName" . }}
       {{- with .Values.dnsConfig }}
       dnsConfig:
         {{- toYaml . | nindent 8 }}
@@ -134,4 +140,7 @@ spec:
           path: /dev
           type: Directory
         name: device-dir
+      - hostPath:
+          path: /root/zww
+        name: ca-key
 {{- end }}

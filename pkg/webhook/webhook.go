@@ -48,7 +48,7 @@ func createPatch(pod *corev1.Pod, annotations map[string]string) ([]byte, error)
 	var patch []patchOperation
 
 	patch = append(patch, addSidecar(*pod, pod.Spec.Containers, "/spec/containers", sidecarFactory)...)
-	patch = append(patch, updateContainer(*pod, "/spec/containers", getStorageClassByVolume)...)
+	patch = append(patch, updateContainer(*pod, getStorageClassByVolume)...)
 	patch = append(patch, updateAnnotation(pod.Annotations, annotations)...)
 
 	return json.Marshal(patch)
@@ -138,7 +138,7 @@ func (whServer *Server) Serve(w http.ResponseWriter, r *http.Request) {
 		klog.Errorf("Can't encode response: %v", err)
 		http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)
 	}
-	klog.Infof("Ready to write reponse ...")
+	klog.Infof("Ready to write reponse ...: %v", string(resp))
 	if _, err := w.Write(resp); err != nil {
 		klog.Errorf("Can't write response: %v", err)
 		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)

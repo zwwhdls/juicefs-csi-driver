@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -25,6 +26,8 @@ const (
 	mountBase   = "/jfs"
 	fsType      = "juicefs"
 )
+
+var EnableSidecar = false
 
 // Interface of juicefs provider
 type Interface interface {
@@ -420,29 +423,31 @@ func (j *juicefs) ceMount(source string, mountPath string, fsType string, option
 		klog.V(5).Infof("Unmount %v", mountPath)
 	}
 
-	//envs := append(syscall.Environ(), "JFS_FOREGROUND=1")
-	//mntCmd := exec.Command(ceMountPath, mountArgs...)
-	//mntCmd.Env = envs
-	//mntCmd.Stderr = os.Stderr
-	//mntCmd.Stdout = os.Stdout
-	//go func() { _ = mntCmd.Run() }()
-	//// Wait until the mount point is ready
-	//for i := 0; i < 30; i++ {
-	//	finfo, err := os.Stat(mountPath)
-	//	if err != nil {
-	//		return status.Errorf(codes.Internal, "Stat mount path %v failed: %v", mountPath, err)
-	//	}
-	//	if st, ok := finfo.Sys().(*syscall.Stat_t); ok {
-	//		if st.Ino == 1 {
-	//			return nil
-	//		}
-	//		klog.V(5).Infof("Mount point %v is not ready", mountPath)
-	//	} else {
-	//		klog.V(5).Info("Cannot reach here")
-	//	}
-	//	time.Sleep(time.Second)
-	//}
-	//return status.Errorf(codes.Internal, "Mount %v at %v failed: mount isn't ready in 30 seconds", source, mountPath)
+	if !EnableSidecar {
+		envs := append(syscall.Environ(), "JFS_FOREGROUND=1")
+		mntCmd := exec.Command(ceMountPath, mountArgs...)
+		mntCmd.Env = envs
+		mntCmd.Stderr = os.Stderr
+		mntCmd.Stdout = os.Stdout
+		go func() { _ = mntCmd.Run() }()
+		// Wait until the mount point is ready
+		for i := 0; i < 30; i++ {
+			finfo, err := os.Stat(mountPath)
+			if err != nil {
+				return status.Errorf(codes.Internal, "Stat mount path %v failed: %v", mountPath, err)
+			}
+			if st, ok := finfo.Sys().(*syscall.Stat_t); ok {
+				if st.Ino == 1 {
+					return nil
+				}
+				klog.V(5).Infof("Mount point %v is not ready", mountPath)
+			} else {
+				klog.V(5).Info("Cannot reach here")
+			}
+			time.Sleep(time.Second)
+		}
+		return status.Errorf(codes.Internal, "Mount %v at %v failed: mount isn't ready in 30 seconds", source, mountPath)
+	}
 	return nil
 }
 

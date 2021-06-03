@@ -5,12 +5,10 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"github.com/juicedata/juicefs-csi-driver/pkg/juicefs"
 	"github.com/juicedata/juicefs-csi-driver/pkg/webhook"
 	"k8s.io/klog"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var (
@@ -22,14 +20,15 @@ var (
 func init() {
 	// get command line parameters
 	flag.IntVar(&Port, "port", 8443, "Webhook server port.")
-	flag.StringVar(&CertFile, "tlsCertFile", "/server.pem", "File containing the x509 Certificate for HTTPS.")
-	flag.StringVar(&KeyFile, "tlsKeyFile", "/serverkey.pem", "File containing the x509 private key to --tlsCertFile.")
-	flag.StringVar(&webhook.SidecarImage, "sidecarImage", "", "")
-	flag.StringVar(&webhook.SidecarCpuLimit, "sidecarCpuLimit", "", "")
-	flag.StringVar(&webhook.SidecarMemLimit, "sidecarMemLimit", "", "")
+	flag.StringVar(&CertFile, "tlsCertFile", "", "File containing the x509 Certificate for HTTPS.")
+	flag.StringVar(&KeyFile, "tlsKeyFile", "", "File containing the x509 private key to --tlsCertFile.")
+	flag.StringVar(&webhook.SidecarImage, "sidecar-image", "", "JuiceFS daemon sidecar image.")
+	flag.StringVar(&webhook.SidecarCpuLimit, "sidecar-cpu-limit", "", "JuiceFS daemon sidecar cpu limit.")
+	flag.StringVar(&webhook.SidecarMemLimit, "sidecar-mem-limit", "", "JuiceFS daemon sidecar mem limit.")
+	flag.BoolVar(&juicefs.EnableSidecar, "enable", false, "Enable JuiceFS sidecar or not.")
 }
 
-func SideCarRun() {
+func JfsdSidecarWebhookRun(ctx context.Context) {
 	pair, err := tls.LoadX509KeyPair(CertFile, KeyFile)
 	if err != nil {
 		klog.Errorf("Failed to load key pair: %v", err)
@@ -49,16 +48,14 @@ func SideCarRun() {
 
 	// start webhook server in new rountine
 	go func() {
-		if err := whServer.Server.ListenAndServeTLS("", ""); err != nil {
+		if err := whServer.Server.ListenAndServeTLS(CertFile, KeyFile); err != nil {
 			klog.Errorf("Failed to listen and serve webhook server: %v", err)
 		}
 	}()
 
-	// listening OS shutdown singal
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-	<-signalChan
-
-	klog.Infof("Got OS shutdown signal, shutting down webhook server gracefully...")
-	whServer.Server.Shutdown(context.Background())
+	select {
+	case <-ctx.Done():
+		klog.Infof("Got OS shutdown signal, shutting down webhook server gracefully...")
+		whServer.Server.Shutdown(context.Background())
+	}
 }

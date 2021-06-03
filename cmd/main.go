@@ -20,10 +20,11 @@ import (
 	"flag"
 	"fmt"
 	"github.com/juicedata/juicefs-csi-driver/cmd/apps"
-	"os"
-
 	"github.com/juicedata/juicefs-csi-driver/pkg/driver"
+	"github.com/juicedata/juicefs-csi-driver/pkg/juicefs"
+	"github.com/juicedata/juicefs-csi-driver/pkg/util"
 	"k8s.io/klog"
+	"os"
 )
 
 func main() {
@@ -34,6 +35,9 @@ func main() {
 	)
 	klog.InitFlags(nil)
 	flag.Parse()
+
+	// build signal context
+	signalContext := util.SetupSignalContext()
 
 	if *version {
 		info, err := driver.GetVersionJSON()
@@ -48,7 +52,10 @@ func main() {
 		klog.Fatalln("nodeID must be provided")
 	}
 
-	go apps.SideCarRun()
+	// if enable juicefs daemon sidecar, run sidecar server in new goroutine
+	if juicefs.EnableSidecar {
+		go apps.JfsdSidecarWebhookRun(signalContext)
+	}
 
 	drv, err := driver.NewDriver(*endpoint, *nodeID)
 	if err != nil {
