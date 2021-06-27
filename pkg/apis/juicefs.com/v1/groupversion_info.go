@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package v1 contains API Schema definitions for the juicefs v1 API group
 //+kubebuilder:object:generate=true
-//+groupName=mount.juicefs.com
+//+groupName=juicefs.com
 package v1
 
 import (

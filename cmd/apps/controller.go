@@ -4,8 +4,10 @@ import (
 	"flag"
 	mountv1 "github.com/juicedata/juicefs-csi-driver/pkg/apis/juicefs.com/v1"
 	"github.com/juicedata/juicefs-csi-driver/pkg/controllers"
+	"github.com/juicedata/juicefs-csi-driver/pkg/juicefs"
+	"github.com/spf13/cobra"
+	"k8s.io/klog"
 	"os"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -31,6 +33,10 @@ func init() {
 
 	utilruntime.Must(mountv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
+
+	juicefs.NodeName = os.Getenv("NODE_NAME")
+	juicefs.MountImage = os.Getenv("MOUNT_IMAGE")
+	juicefs.MountPointPath = os.Getenv("JUICEFS_MOUNT_PATH")
 }
 
 type Manager struct {
@@ -91,10 +97,24 @@ func NewManager() *Manager {
 	return &Manager{mgr}
 }
 
-func (mgr *Manager) Run() {
-	setupLog.Info("starting manager")
-	if err := mgr.Manager.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+func Command() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "manager",
+		Short: "Start the Juice Mount on Kubernetes operator",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			mgr := NewManager()
+			setupLog.Info("starting manager")
+			err := mgr.Manager.Start(ctrl.SetupSignalHandler())
+			setupLog.Error(err, "problem running manager")
+			return err
+		},
 	}
+	fs := flag.NewFlagSet("", flag.PanicOnError)
+	klog.InitFlags(fs)
+	cmd.Flags().AddGoFlagSet(fs)
+	cmd.Flags().StringVar(&juicefs.MountPodCpuRequest, "mountPodCpuRequest", "1", "mount pod cpuRequest")
+	cmd.Flags().StringVar(&juicefs.MountPodCpuLimit, "mountPodCpuLimit", "1", "mount pod cpuLimit")
+	cmd.Flags().StringVar(&juicefs.MountPodMemRequest, "mountPodMemRequest", "1G", "mount pod memoryRequest")
+	cmd.Flags().StringVar(&juicefs.MountPodMemLimit, "mountPodMemLimit", "1G", "mount pod memoryLimit")
+	return cmd
 }

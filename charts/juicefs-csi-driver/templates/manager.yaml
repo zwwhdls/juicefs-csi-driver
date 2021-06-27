@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: juicefs-controller-manager
+  namespace: kube-system
+  labels:
+    control-plane: juicefs-controller-manager
+spec:
+  selector:
+    matchLabels:
+      control-plane: juicefs-controller-manager
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        control-plane: juicefs-controller-manager
+    spec:
+      containers:
+      - args:
+          - "manager"
+          - --logtostderr
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        name: manager
+        env:
+        - name: JUICEFS_MOUNT_PATH
+          value: {{ .Values.jfsMountDir }}
+        securityContext:
+          allowPrivilegeEscalation: false
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 100m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+      serviceAccountName: juicefs-controller-manager
+      terminationGracePeriodSeconds: 10

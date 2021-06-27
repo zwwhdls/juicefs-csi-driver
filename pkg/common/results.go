@@ -22,19 +22,12 @@ type Results struct {
 	errors  []error
 }
 
-func NewResult(ctx context.Context) *Results {
-	return &Results{
-		ctx: ctx,
-	}
-}
-
 func (r *Results) With(name string, fn func() (reconcile.Result, error)) *Results {
 	log := ctrl.Log.WithName(name)
-	log.Info("run step")
 
 	result, err := fn()
 	if err != nil {
-		log.Error(err, "run step failed")
+		log.Error(err, "run step failed: %q", err)
 	}
 	return r.WithError(err).WithResult(&Results{current: result, kind: kindOfResult(result)})
 }
@@ -64,7 +57,7 @@ func (r *Results) Aggregate() (reconcile.Result, error) {
 	return r.current, errors.NewAggregate(r.errors)
 }
 
-func NewResults(ctx context.Context) *Results {
+func NewResult(ctx context.Context) *Results {
 	return &Results{
 		ctx:     ctx,
 		current: reconcile.Result{},

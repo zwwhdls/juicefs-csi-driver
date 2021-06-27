@@ -19,6 +19,8 @@ package driver
 import (
 	"context"
 	"fmt"
+	"github.com/juicedata/juicefs-csi-driver/pkg/apis/juicefs.com/client"
+	mountv1 "github.com/juicedata/juicefs-csi-driver/pkg/apis/juicefs.com/v1"
 	"os"
 	"reflect"
 	"strconv"
@@ -164,6 +166,38 @@ func (d *nodeService) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 func (d *nodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	klog.V(4).Infof("NodeUnpublishVolume: called with args %+v", req)
 
+	volumeId := req.GetVolumeId()
+
+	clientset, err := client.NewForConfig()
+	if err != nil {
+		klog.V(5).Infof("Get clientset incluster error: %v", err)
+		return nil, status.Errorf(codes.Internal, "Can't get clientset in cluster.")
+	}
+
+	jmount := &mountv1.JuiceMount{}
+	// TODO labelSelector
+	existed, err := clientset.JuiceMounts(juicefs.DefaultNamespace).List(context.Background())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "List JuiceMount error: %v", err)
+	}
+	for _, jm := range existed.Items {
+		if jm.Labels[mountv1.NodeName] == juicefs.NodeName && jm.Labels[mountv1.VolumeId] == volumeId {
+			jmount = &jm
+			break
+		}
+	}
+	if jmount == nil {
+		return nil, status.Errorf(codes.Internal, "Can't find JuiceMount for volume: %v", volumeId)
+	}
+
+	if jmount.Spec.Refs == 1 {
+		klog.V(5).Infof("NodeUnpublishVolume: delete juiceMount %s", jmount.Name)
+		err := clientset.JuiceMounts(juicefs.DefaultNamespace).Delete(context.Background(), jmount.Name)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "Delete JuiceMount error: %v", err)
+		}
+	}
+
 	target := req.GetTargetPath()
 	if len(target) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
@@ -203,7 +237,6 @@ func (d *nodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	klog.V(5).Infof("NodeUnpublishVolume: unmounting ref for target %s", target)
 	// we can only unmount this when only one is left
 	// since the PVC might be used by more than one container
-	// todo think about CR
 	if err == nil && len(refs) == 1 {
 		klog.V(5).Infof("NodeUnpublishVolume: unmounting ref %s", refs[0])
 		if err := d.juicefs.JfsUnmount(refs[0]); err != nil {

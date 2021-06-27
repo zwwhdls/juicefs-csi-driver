@@ -20,52 +20,68 @@ import (
 	"flag"
 	"fmt"
 	"github.com/juicedata/juicefs-csi-driver/cmd/apps"
+	"k8s.io/klog"
 	"os"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/juicedata/juicefs-csi-driver/pkg/driver"
-	"github.com/juicedata/juicefs-csi-driver/pkg/juicefs"
-	"k8s.io/klog"
+	"github.com/spf13/cobra"
 )
 
-func init() {
-	juicefs.NodeName = os.Getenv("NODE_NAME")
-	juicefs.MountImage= os.Getenv("MOUNT_IMAGE")
+var setupLog = ctrl.Log.WithName("setup")
+
+var (
+	endpoint string
+	version  bool
+	nodeID   string
+)
+
+func JuiceCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "juicefs",
+		Short: "run juice csi driver",
+		Run: func(cmd *cobra.Command, args []string) {
+			setupLog.Info("juicefs command begin.")
+			if version {
+				info, err := driver.GetVersionJSON()
+				if err != nil {
+					setupLog.Error(err, "setup err.")
+				}
+				fmt.Println(info)
+				os.Exit(0)
+			}
+
+			if nodeID == "" {
+				setupLog.Error(nil, "nodeID must be provided")
+			}
+
+			drv, err := driver.NewDriver(endpoint, nodeID)
+			if err != nil {
+				setupLog.Error(err, "driver init err.")
+			}
+			if err := drv.Run(); err != nil {
+				setupLog.Error(err, "driver run err.")
+			}
+		},
+	}
+	cmd.Flags().StringVar(&endpoint, "endpoint", "unix://tmp/csi.sock", "CSI Endpoint")
+	cmd.Flags().BoolVar(&version, "version", false, "Print the version and exit.")
+	cmd.Flags().StringVar(&nodeID, "nodeid", "", "Node ID")
+
+	fs := flag.NewFlagSet("", flag.PanicOnError)
+	klog.InitFlags(fs)
+	cmd.Flags().AddGoFlagSet(fs)
+	return cmd
 }
 
 func main() {
-	var (
-		endpoint       = flag.String("endpoint", "unix://tmp/csi.sock", "CSI Endpoint")
-		version        = flag.Bool("version", false, "Print the version and exit.")
-		nodeID         = flag.String("nodeid", "", "Node ID")
-		enableOperator = flag.Bool("enableOperator", false, "Enable operator or not.")
-	)
-	klog.InitFlags(nil)
-	flag.Parse()
-
-	if *enableOperator {
-		klog.V(5).Info("Enable operator.")
-		mgr := apps.NewManager()
-		mgr.Run()
-	} else {
-		if *version {
-			info, err := driver.GetVersionJSON()
-			if err != nil {
-				klog.Fatalln(err)
-			}
-			fmt.Println(info)
-			os.Exit(0)
-		}
-
-		if *nodeID == "" {
-			klog.Fatalln("nodeID must be provided")
-		}
-
-		drv, err := driver.NewDriver(*endpoint, *nodeID)
-		if err != nil {
-			klog.Fatalln(err)
-		}
-		if err := drv.Run(); err != nil {
-			klog.Fatalln(err)
-		}
+	rootCmd := &cobra.Command{
+		Use:          "",
+		Short:        "JuiceFS csi driver",
+		SilenceUsage: true,
 	}
+	rootCmd.AddCommand(JuiceCommand())
+	rootCmd.AddCommand(apps.Command())
+
+	_ = rootCmd.Execute()
 }

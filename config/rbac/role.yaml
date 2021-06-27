@@ -1,0 +1,34 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - mount.juicefs.com
+  resources:
+  - juicemount
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - mount.juicefs.com
+  resources:
+  - juicemount/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - mount.juicefs.com
+  resources:
+  - juicemount/status
+  verbs:
+  - get
+  - patch
+  - update

@@ -29,6 +29,7 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         {{- end }}
         args:
+        - juicefs
         - --endpoint=$(CSI_ENDPOINT)
         - --logtostderr
         - --nodeid=$(NODE_ID)
@@ -62,6 +63,9 @@ spec:
         - mountPath: {{ .Values.kubeletDir }}
           mountPropagation: Bidirectional
           name: kubelet-dir
+        - mountPath: /jfs
+          mountPropagation: Bidirectional
+          name: jfs-dir
         - mountPath: /csi
           name: plugin-dir
         - mountPath: /dev
@@ -123,11 +127,16 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      serviceAccount: {{ include "juicefs-csi.serviceAccountName" . }}
       volumes:
       - hostPath:
           path: {{ .Values.kubeletDir }}
           type: Directory
         name: kubelet-dir
+      - hostPath:
+          path: {{ .Values.jfsMountDir }}
+          type: DirectoryOrCreate
+        name: jfs-dir
       - hostPath:
           path: {{ .Values.kubeletDir }}/csi-plugins/csi.juicefs.com/
           type: DirectoryOrCreate

@@ -18,7 +18,10 @@ package controllers
 
 import (
 	"path/filepath"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -40,6 +43,7 @@ import (
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
+var k8sManager manager.Manager
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -49,29 +53,58 @@ func TestAPIs(t *testing.T) {
 		[]Reporter{printer.NewlineReporter{}})
 }
 
-var _ = BeforeSuite(func() {
+var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	By("bootstrapping test environment")
+	extCluster := true
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
-		ErrorIfCRDPathMissing: true,
+		UseExistingCluster:       &extCluster,
+		CRDDirectoryPaths:        []string{filepath.Join("../..", "config", "crd")},
+		AttachControlPlaneOutput: true,
+		ControlPlaneStartTimeout: 10 * time.Minute,
 	}
 
-	cfg, err := testEnv.Start()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(cfg).NotTo(BeNil())
+	var err error
+	cfg, err = testEnv.Start()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(cfg).ToNot(BeNil())
 
 	err = mountv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	//+kubebuilder:scaffold:scheme
-
-	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	err = mountv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(k8sClient).NotTo(BeNil())
 
-}, 60)
+	// +kubebuilder:scaffold:scheme
+
+	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{
+		Scheme:             scheme.Scheme,
+		MetricsBindAddress: ":8080",
+	})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(k8sManager).ToNot(BeNil())
+
+	k8sClient = k8sManager.GetClient()
+	Expect(k8sClient).ToNot(BeNil())
+
+	Expect((&JuicefsReconciler{
+		Client: Client{
+			Client:   k8sClient,
+			Recorder: k8sManager.GetEventRecorderFor("mount-controller"),
+		},
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(k8sManager)).Should(Succeed())
+
+	waitStart := make(chan struct{})
+	go func() {
+		close(waitStart)
+		err = k8sManager.Start(ctrl.SetupSignalHandler())
+		Expect(err).ToNot(HaveOccurred())
+	}()
+	<-waitStart
+	close(done)
+}, 600)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")

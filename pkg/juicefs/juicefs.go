@@ -7,6 +7,7 @@ import (
 	mountv1 "github.com/juicedata/juicefs-csi-driver/pkg/apis/juicefs.com/v1"
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	configv1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"net/http"
 	"os"
 	"os/exec"
@@ -28,7 +29,7 @@ const (
 	ceMountPath      = "/bin/mount.juicefs"
 	mountBase        = "/jfs"
 	fsType           = "juicefs"
-	defaultNamespace = "kube-system"
+	DefaultNamespace = "kube-system"
 )
 
 // Interface of juicefs provider
@@ -289,7 +290,7 @@ func (j *juicefs) MountFs(volumeID, source string, options []string) (string, er
 	if !exists {
 		klog.V(5).Infof("Mount: mounting %q at %q with options %v", source, mountPath, options)
 		if isCeMount {
-			err = j.ceMount(source, mountPath, fsType, options)
+			err = j.ceMount(source, mountPath, volumeID, fsType, options)
 		} else {
 			err = j.Mount(source, mountPath, fsType, options)
 		}
@@ -308,7 +309,7 @@ func (j *juicefs) MountFs(volumeID, source string, options []string) (string, er
 	if notMnt {
 		klog.V(5).Infof("Mount: mounting %q at %q with options %v", source, mountPath, options)
 		if isCeMount {
-			err = j.ceMount(source, mountPath, fsType, options)
+			err = j.ceMount(source, mountPath, volumeID, fsType, options)
 		} else {
 			err = j.Mount(source, mountPath, fsType, options)
 		}
@@ -401,7 +402,7 @@ func (j *juicefs) ceFormat(secrets map[string]string) ([]byte, error) {
 	return j.Exec.Command(ceCliPath, args...).CombinedOutput()
 }
 
-func (j *juicefs) ceMount(source string, mountPath string, fsType string, options []string) error {
+func (j *juicefs) ceMount(source string, mountPath string, volumeId, fsType string, options []string) error {
 	klog.V(5).Infof("ceMount: mount %v at %v", source, mountPath)
 	mountArgs := []string{source, mountPath}
 
@@ -429,20 +430,52 @@ func (j *juicefs) ceMount(source string, mountPath string, fsType string, option
 	}
 
 	// create CR
-	juiceMount := newJuiceMount(source, mountPath)
 	clientset, err := client.NewForConfig()
 	if err != nil {
 		klog.V(5).Infof("Get clientset incluster error: %v", err)
 		return status.Errorf(codes.Internal, "Can't get clientset in cluster.")
 	}
-	juiceMount, err = clientset.JuiceMounts(defaultNamespace).Create(context.Background(), juiceMount, metav1.CreateOptions{})
+	// TODO labelSelector
+	var juiceMount *mountv1.JuiceMount
+	existed, err := clientset.JuiceMounts(DefaultNamespace).List(context.Background())
 	if err != nil {
-		return status.Errorf(codes.Internal, "Create JuiceMount error: %v", err)
+		return status.Errorf(codes.Internal, "List JuiceMount error: %v", err)
+	}
+	for _, jm := range existed.Items {
+		if jm.Labels[mountv1.NodeName] == NodeName && jm.Labels[mountv1.VolumeId] == volumeId {
+			klog.V(5).Infof("VolumeId %v has been mounted in node %v.", volumeId, NodeName)
+			juiceMount = &jm
+		}
+	}
+	if juiceMount == nil {
+		juiceMount := newJuiceMount(source, mountPath, volumeId)
+		juiceMount, err = clientset.JuiceMounts(DefaultNamespace).Create(context.Background(), juiceMount)
+		if err != nil {
+			return status.Errorf(codes.Internal, "Create JuiceMount error: %v", err)
+		}
+	} else {
+		juiceMount.Spec.Refs++
+		klog.V(5).Infof("Juice Mount CR Refs add 1.")
+		juiceMount, err = clientset.JuiceMounts(DefaultNamespace).Patch(context.Background(), &mountv1.JuiceMountApplyConfiguration{
+			TypeMetaApplyConfiguration: configv1.TypeMetaApplyConfiguration{
+				Kind:       &juiceMount.Kind,
+				APIVersion: &juiceMount.APIVersion,
+			},
+			ObjectMetaApplyConfiguration: &configv1.ObjectMetaApplyConfiguration{
+				Name:      &juiceMount.Name,
+				Namespace: &juiceMount.Namespace,
+			},
+			Spec: &mountv1.JuiceMountSpecApplyConfiguration{Refs: juiceMount.Spec.Refs},
+		})
+		if err != nil {
+			return status.Errorf(codes.Internal, "Create JuiceMount error: %v", err)
+		}
+		return nil
 	}
 
 	// Wait until the juiceMount is successful
 	for i := 0; i < 30; i++ {
-		jm, err := clientset.JuiceMounts(defaultNamespace).Get(context.Background(), juiceMount.Name, metav1.GetOptions{})
+		jm, err := clientset.JuiceMounts(DefaultNamespace).Get(context.Background(), juiceMount.Name)
 		if err != nil {
 			return status.Errorf(codes.Internal, "Get JuiceMount %v failed: %v", juiceMount.Name, err)
 		}
@@ -457,15 +490,19 @@ func (j *juicefs) ceMount(source string, mountPath string, fsType string, option
 	return status.Errorf(codes.Internal, "Mount %v at %v failed: mount isn't ready in 30 seconds", source, mountPath)
 }
 
-func newJuiceMount(source, mountPath string) *mountv1.JuiceMount {
+func newJuiceMount(source, mountPath, volumeId string) *mountv1.JuiceMount {
 	return &mountv1.JuiceMount{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       mountv1.Kind,
-			APIVersion: mountv1.Version,
+			APIVersion: fmt.Sprintf("%s/%s", mountv1.Group, mountv1.Version),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "",
-			Namespace: defaultNamespace,
+			GenerateName: "juicefs-mount-",
+			Namespace:    DefaultNamespace,
+			Labels: map[string]string{
+				mountv1.NodeName: NodeName,
+				mountv1.VolumeId: volumeId,
+			},
 		},
 		Spec: mountv1.JuiceMountSpec{
 			MountSpec: mountv1.MountSpec{
@@ -475,6 +512,7 @@ func newJuiceMount(source, mountPath string) *mountv1.JuiceMount {
 				MountPath:   mountPath,
 			},
 			NodeName: NodeName,
+			Refs:     1,
 		},
 	}
 }

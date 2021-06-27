@@ -8,8 +8,8 @@
 # fullnameOverride: ""
 
 image:
-  repository: juicedata/juicefs-csi-driver
-  tag: "v0.9.0"
+  repository: zwwhdlsdocker/o0v0o.cn
+  tag: "test-29"
   pullPolicy: ""
 
 sidecars:
@@ -32,6 +32,9 @@ hostAliases: []
 
 # -- kubelet working directory,can be set using `--root-dir` when starting kubelet
 kubeletDir: /var/lib/kubelet
+
+# -- juicefs mount dir
+jfsMountDir: /run/juicefs/volume
 
 dnsPolicy: ClusterFirstWithHostNet
 dnsConfig:
@@ -118,7 +121,7 @@ storageClasses:
     # redis examples: redis://[:<PASSWORD>]@<HOST>:6379[/<DB>]
     # no auth:   redis://192.168.0.1:6379/7
     # root auth:   redis://:password@192.168.0.1:6379/7
-    metaurl: ""
+    metaurl: "redis://192.168.124.217:6379/0"
     # -- Object storage type, such as `s3`, `gs`, `oss`. Read [this document](https://github.com/juicedata/juicefs/blob/main/docs/en/how_to_setup_object_storage.md) for the full supported list.
     storage: ""
     # -- Access key for object storage

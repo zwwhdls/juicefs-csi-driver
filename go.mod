@@ -4,13 +4,14 @@ require (
 	github.com/container-storage-interface/spec v1.1.0
 	github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
-	github.com/go-logr/logr v0.4.0 // indirect
+	github.com/go-logr/logr v0.4.0
 	github.com/kubernetes-csi/csi-test v1.1.0
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
-	github.com/pkg/errors v0.9.1
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.26.0
+	github.com/spf13/cobra v1.1.1
 	google.golang.org/grpc v1.27.1
 	google.golang.org/protobuf v1.26.0
 	k8s.io/api v0.21.1

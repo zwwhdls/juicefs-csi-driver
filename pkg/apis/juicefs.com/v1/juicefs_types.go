@@ -28,22 +28,23 @@ type JuiceMountSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	MountSpec MountSpec `json:"mount_spec"`
-	NodeName  string    `json:"node_name"`
+	MountSpec MountSpec `json:"mountSpec"`
+	NodeName  string    `json:"nodeName"`
+	Refs      int       `json:"refs"`
 }
 
 type MountSpec struct {
 	Image       string `json:"image"`
-	MetaUrl     string `json:"meta_url"`
-	JuiceFsPath string `json:"juice_fs_path"`
-	MountPath   string `json:"mount_path"`
+	MetaUrl     string `json:"metaUrl"`
+	JuiceFsPath string `json:"juiceFsPath"`
+	MountPath   string `json:"mountPath"`
 }
 
 // JuiceMountStatus defines the observed state of Juicefs
 type JuiceMountStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	MountStatus JMountStatus `json:"mount_status"`
+	MountStatus JMountStatus `json:"mountStatus"`
 }
 
 type JMountStatus string
