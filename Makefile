@@ -15,6 +15,7 @@
 IMAGE=juicedata/juicefs-csi-driver
 JUICEFS_IMAGE=juicedata/juicefs-fuse
 REGISTRY=docker.io
+ACR_REGISTRY=registry.cn-hangzhou.aliyuncs.com
 VERSION=$(shell git describe --tags --match 'v*' --always --dirty)
 GIT_BRANCH?=$(shell git rev-parse --abbrev-ref HEAD)
 GIT_COMMIT?=$(shell git rev-parse HEAD)
@@ -67,9 +68,9 @@ image-nightly-buildx:
 .PHONY: juicefs-image-nightly-buildx
 juicefs-image-nightly-buildx:
 	# Build image with newest juicefs
-	#docker buildx build -f juicefs.Dockerfile -t $(JUICEFS_IMAGE):nightly --platform linux/amd64,linux/arm64 . --push
-	docker build -f juicefs.Dockerfile --build-arg TARGETARCH=amd64 -t $(JUICEFS_IMAGE):nightly .
-	docker push $(JUICEFS_IMAGE):nightly
+	#docker buildx build -f juicefs.Dockerfile -t $(ACR_REGISTRY)/$(JUICEFS_IMAGE):nightly --platform linux/amd64,linux/arm64 . --push
+	docker build -f juicefs.Dockerfile --build-arg TARGETARCH=amd64 -t $(ACR_REGISTRY)/$(JUICEFS_IMAGE):nightly .
+	docker push $(ACR_REGISTRY)/$(JUICEFS_IMAGE):nightly
 
 .PHONY: image-latest
 image-latest:
