@@ -68,9 +68,9 @@ image-nightly-buildx:
 .PHONY: juicefs-image-nightly-buildx
 juicefs-image-nightly-buildx:
 	# Build image with newest juicefs
-	#docker buildx build -f juicefs.Dockerfile -t $(ACR_REGISTRY)/$(JUICEFS_IMAGE):nightly --platform linux/amd64,linux/arm64 . --push
-	docker build -f juicefs.Dockerfile --build-arg TARGETARCH=amd64 -t $(ACR_REGISTRY)/$(JUICEFS_IMAGE):nightly .
-	docker push $(ACR_REGISTRY)/$(JUICEFS_IMAGE):nightly
+	docker buildx build -f juicefs.Dockerfile -t $(ACR_REGISTRY)/$(JUICEFS_IMAGE):nightly --platform linux/amd64,linux/arm64 . --push
+#	docker build -f juicefs.Dockerfile --build-arg TARGETARCH=amd64 -t $(ACR_REGISTRY)/$(JUICEFS_IMAGE):nightly .
+#	docker push $(ACR_REGISTRY)/$(JUICEFS_IMAGE):nightly
 
 .PHONY: image-latest
 image-latest:
@@ -104,8 +104,10 @@ image-version:
 .PHONY: juicefs-image-version
 juicefs-image-version:
 	[ -z `git status --porcelain` ] || (git --no-pager diff && exit 255)
-	docker buildx build -f juicefs.Dockerfile -t $(JUICEFS_IMAGE):$(JUICEFS_LATEST_VERSION) --build-arg JUICEFS_REPO_REF=$(JUICEFS_LATEST_VERSION) \
-		--build-arg=JFS_AUTO_UPGRADE=disabled --platform linux/amd64,linux/arm64 . --push
+#	docker buildx build -f juicefs.Dockerfile -t $(JUICEFS_IMAGE):$(JUICEFS_LATEST_VERSION) --build-arg JUICEFS_REPO_REF=$(JUICEFS_LATEST_VERSION) \
+#		--build-arg=JFS_AUTO_UPGRADE=disabled --platform linux/amd64,linux/arm64 . --push
+	docker build -f juicefs.Dockerfile --build-arg TARGETARCH=amd64 -t $(ACR_REGISTRY)/$(JUICEFS_IMAGE):$(JUICEFS_LATEST_VERSION) .
+	docker push $(ACR_REGISTRY)/$(JUICEFS_IMAGE):$(JUICEFS_LATEST_VERSION)
 
 .PHONY: push-version
 push-version:

@@ -15,4 +15,4 @@ jobs:
       run: docker login registry.cn-hangzhou.aliyuncs.com --username zww@hdls.me --password ${{ secrets.ACR_TOKEN }}
     - name: Buildx and Push docker image nightly
       run: |
-        make juicefs-image-nightly-buildx
+        make juicefs-image-version
