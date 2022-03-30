@@ -65,6 +65,13 @@ image-nightly-buildx:
 	# Build image with newest juicefs-csi-driver and juicefs
 	docker buildx build -t $(IMAGE):nightly --platform linux/amd64,linux/arm64 . --push
 
+.PHONY: juicefs-image-nightly
+juicefs-image-nightly:
+	# Build image with newest juicefs-csi-driver and juicefs
+	#docker buildx build -t $(IMAGE):nightly --platform linux/amd64,linux/arm64 . --push
+	docker build -f juicefs.Dockerfile --build-arg TARGETARCH=amd64 -t $(ACR_REGISTRY)/$(JUICEFS_IMAGE):nightly
+	docker push $(ACR_REGISTRY)/$(JUICEFS_IMAGE):nightly
+
 .PHONY: juicefs-image-nightly-buildx
 juicefs-image-nightly-buildx:
 	# Build image with newest juicefs

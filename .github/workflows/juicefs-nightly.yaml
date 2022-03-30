@@ -1,0 +1,18 @@
+name: Build juicefs image
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - docker_build
+
+jobs:
+  publish-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Login Docker Hub
+        run: docker login registry.cn-hangzhou.aliyuncs.com --username zww@hdls.me --password ${{ secrets.ACR_TOKEN }}
+      - name: Buildx and Push docker image nightly
+        run: |
+          make juicefs-image-nightly
