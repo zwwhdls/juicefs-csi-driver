@@ -1,4 +1,4 @@
-name: Build juicefs image
+name: Build nigtly juicefs image
 
 on:
   workflow_dispatch:
