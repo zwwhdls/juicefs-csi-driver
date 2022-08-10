@@ -22,6 +22,7 @@ set -e
 
 username=zww@hdls.me
 passwd=${ACR_TOKEN}
+tag=${JUICEFS_LATEST_VERSION}
 
 REGIONS=(
 	  registry.cn-hangzhou.aliyuncs.com
@@ -42,6 +43,6 @@ for REGION in ${REGIONS[@]};
 do
 	echo ${REGION}
     docker login --username=${username} --password=${passwd} ${REGION}
-	docker tag registry.cn-hangzhou.aliyuncs.com/juicefs/juicefs-fuse:v1.0.0-rc3 ${REGION}/juicefs/juicefs-fuse:v1.0.0-rc3
-    docker push ${REGION}/juicefs/juicefs-fuse:v1.0.0-rc3
+	  docker tag registry.cn-hangzhou.aliyuncs.com/juicefs/juicefs-fuse:${tag} ${REGION}/juicefs/juicefs-fuse:${tag}
+    docker push ${REGION}/juicefs/juicefs-fuse:${tag}
 done
