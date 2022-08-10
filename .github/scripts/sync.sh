@@ -22,7 +22,10 @@ set -e
 
 username=zww@hdls.me
 passwd=${ACR_TOKEN}
-tag=${JUICEFS_LATEST_VERSION}
+tag=${JUICEFS_VERSION}
+if [ ! -n $tag]; then
+  tag=$(shell curl -fsSL https://api.github.com/repos/juicedata/juicefs/releases/latest | grep tag_name | grep -oE 'v[0-9]+\.[0-9][0-9]*(\.[0-9]+(-[0-9a-z]+)?)?')
+fi
 
 REGIONS=(
 	  registry.cn-hangzhou.aliyuncs.com
