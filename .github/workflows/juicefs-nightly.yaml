@@ -16,12 +16,10 @@ jobs:
       - name: Buildx and Push docker image nightly
         run: |
           make juicefs-image-nightly
-      - name: Get version
-        env:
-          JUICEFS_LATEST_VERSION: nightly
       - name: sync image
         env:
           ACR_TOKEN: ${{ secrets.ACR_TOKEN }}
+          JUICEFS_LATEST_VERSION: nightly
         run: |
           cd ${GITHUB_WORKSPACE}/.github/scripts/
           ./sync.sh
