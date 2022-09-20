@@ -26,6 +26,8 @@ LDFLAGS?="-X ${PKG}/pkg/driver.driverVersion=${VERSION} -X ${PKG}/pkg/driver.git
 GO111MODULE=on
 IMAGE_VERSION_ANNOTATED=$(IMAGE):$(VERSION)-juicefs$(shell docker run --entrypoint=/usr/bin/juicefs $(IMAGE):$(VERSION) version | cut -d' ' -f3)
 JUICEFS_LATEST_VERSION=$(shell curl -fsSL https://api.github.com/repos/juicedata/juicefs/releases/latest | grep tag_name | grep -oE 'v[0-9]+\.[0-9][0-9]*(\.[0-9]+(-[0-9a-z]+)?)?')
+JUICEFS_CE_LATEST_VERSION=$(shell curl -fsSL https://api.github.com/repos/juicedata/juicefs/releases/latest | grep tag_name | grep -oE 'v[0-9]+\.[0-9][0-9]*(\.[0-9]+(-[0-9a-z]+)?)?')
+JUICEFS_EE_LATEST_VERSION=$(shell curl -sSL https://juicefs.com/static/juicefs -o juicefs-ee && chmod +x juicefs-ee && ./juicefs-ee version | cut -d' ' -f3)
 JUICEFS_CSI_LATEST_VERSION=$(shell git describe --tags --match 'v*' | grep -oE 'v[0-9]+\.[0-9][0-9]*(\.[0-9]+(-[0-9a-z]+)?)?')
 
 GOPROXY=https://goproxy.io
@@ -109,12 +111,12 @@ image-version:
 
 .PHONY: juicefs-image-version
 juicefs-image-version:
-	[ -z `git status --porcelain` ] || (git --no-pager diff && exit 255)
+	#[ -z `git status --porcelain` ] || (git --no-pager diff && exit 255)
 #	docker buildx build -f juicefs.Dockerfile -t $(ACR_REGISTRY)/$(JUICEFS_IMAGE):$(JUICEFS_LATEST_VERSION) --build-arg JUICEFS_REPO_REF=$(JUICEFS_LATEST_VERSION) \
 #		--build-arg=JFS_AUTO_UPGRADE=disabled --platform linux/amd64,linux/arm64 . --push
-	docker build -f juicefs.Dockerfile --build-arg TARGETARCH=amd64 -t $(ACR_REGISTRY)/$(JUICEFS_IMAGE):$(JUICEFS_LATEST_VERSION) \
-	 --build-arg JUICEFS_REPO_REF=$(JUICEFS_LATEST_VERSION) --build-arg=JFS_AUTO_UPGRADE=disabled .
-	docker push $(ACR_REGISTRY)/$(JUICEFS_IMAGE):$(JUICEFS_LATEST_VERSION)
+	docker build -f juicefs.Dockerfile --build-arg TARGETARCH=amd64 -t $(ACR_REGISTRY)/$(JUICEFS_IMAGE):$(JUICEFS_CE_LATEST_VERSION)-$(JUICEFS_EE_LATEST_VERSION) \
+	 --build-arg JUICEFS_REPO_REF=$(JUICEFS_CE_LATEST_VERSION) --build-arg=JFS_AUTO_UPGRADE=disabled .
+	docker push $(ACR_REGISTRY)/$(JUICEFS_IMAGE):$(JUICEFS_CE_LATEST_VERSION)-$(JUICEFS_EE_LATEST_VERSION)
 
 .PHONY: push-version
 push-version:
