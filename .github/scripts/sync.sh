@@ -24,7 +24,10 @@ username=zww@hdls.me
 passwd=${ACR_TOKEN}
 ce_tag=$(curl -fsSL https://api.github.com/repos/juicedata/juicefs/releases/latest | grep tag_name | grep -oE 'v[0-9]+\.[0-9][0-9]*(\.[0-9]+(-[0-9a-z]+)?)?')
 ee_tag=$(curl -sSL https://juicefs.com/static/juicefs -o juicefs-ee && chmod +x juicefs-ee && ./juicefs-ee version | cut -d' ' -f3)
-tag=${ce_tag}-${ee_tag}
+tag=${JUICEFS_VERSION}
+if [[ ${JUICEFS_VERSION} == "" ]]; then
+  tag=${ce_tag}-${ee_tag}
+fi
 
 REGIONS=(
 	  registry.cn-hangzhou.aliyuncs.com
