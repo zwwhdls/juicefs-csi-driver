@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - docker_build
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
   publish-image:
