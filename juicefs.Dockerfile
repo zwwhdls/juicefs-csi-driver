@@ -18,9 +18,14 @@ ARG GOPROXY
 ARG JUICEFS_REPO_BRANCH=main
 ARG JUICEFS_REPO_REF=${JUICEFS_REPO_BRANCH}
 
+RUN apt update && apt install -y software-properties-common wget gnupg gnupg2 && apt update && \
+    wget -q -O- 'https://download.ceph.com/keys/release.asc' | apt-key add - && \
+    apt-add-repository 'deb https://download.ceph.com/debian-pacific/ buster main' && \
+    apt update
+
 WORKDIR /workspace
 ENV GOPROXY=${GOPROXY:-https://proxy.golang.org}
-RUN apt-get update && apt-get install -y musl-tools upx-ucl librados-dev && \
+RUN apt-get update && apt-get install -y musl-tools upx-ucl librados-dev libcephfs-dev librbd-dev && \
     cd /workspace && git clone --branch=$JUICEFS_REPO_BRANCH https://github.com/juicedata/juicefs && \
     cd juicefs && git checkout $JUICEFS_REPO_REF && make juicefs.ceph && mv juicefs.ceph juicefs
 
@@ -40,7 +45,12 @@ ENV JFSCHAN=${JFSCHAN}
 ADD https://github.com/krallin/tini/releases/download/v0.19.0/tini-${TARGETARCH} /tini
 RUN chmod +x /tini
 
-RUN apt-get update && apt-get install -y librados2 curl fuse && \
+RUN apt update && apt install -y software-properties-common wget gnupg gnupg2 && apt update && \
+    wget -q -O- 'https://download.ceph.com/keys/release.asc' | apt-key add - && \
+    apt-add-repository 'deb https://download.ceph.com/debian-pacific/ buster main' && \
+    apt update
+
+RUN apt-get update && apt-get install -y librados2 libcephfs-dev librbd-dev curl fuse && \
     rm -rf /var/cache/apt/* && \
     curl -sSL https://juicefs.com/static/juicefs -o ${JUICEFS_CLI} && chmod +x ${JUICEFS_CLI} && \
     mkdir -p /root/.juicefs && \
