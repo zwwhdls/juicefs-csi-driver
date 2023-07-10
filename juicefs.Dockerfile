@@ -15,8 +15,6 @@ RUN if [ ${TARGETARCH} -eq amd64 ]; then mkdir -p /home/travis/.m2 && \
 WORKDIR /workspace
 ENV GOPROXY=${GOPROXY:-https://proxy.golang.org}
 RUN apt-get update && apt-get install -y musl-tools upx-ucl librados-dev libcephfs-dev librbd-dev && \
-    git clone https://github.com/juicedata/juicefs-csi-driver && \
-    cd juicefs-csi-driver && git checkout $JUICEFS_CSI_REPO_REF && make && \
     cd /workspace && git clone --branch=$JUICEFS_REPO_BRANCH https://github.com/juicedata/juicefs && \
     cd juicefs && git checkout $JUICEFS_REPO_REF && go get github.com/ceph/go-ceph@v0.4.0 && go mod tidy && \
     if [ ${TARGETARCH} -eq amd64 ]; then make juicefs.all && mv juicefs.all juicefs; else make juicefs.ceph && mv juicefs.ceph juicefs; fi && mv juicefs /usr/local/bin/juicefs
