@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+TARGETARCH?=amd64
 IMAGE=juicedata/juicefs-csi-driver
 JUICEFS_IMAGE=juicefs/juicefs-fuse
 REGISTRY=docker.io
