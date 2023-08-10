@@ -37,7 +37,7 @@ jobs:
         env:
           EEVERSION: ee-nightly
         run: |
-          make fuse-ce-image
+          make fuse-ee-image
       - name: sync image
         env:
           ACR_TOKEN: ${{ secrets.ACR_TOKEN }}
