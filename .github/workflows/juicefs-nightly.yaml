@@ -16,12 +16,32 @@ jobs:
       - name: Login Docker Hub
         run: docker login registry.cn-hangzhou.aliyuncs.com --username zww@hdls.me --password ${{ secrets.ACR_TOKEN }}
       - name: Buildx and Push docker image nightly
+        env:
+          CEVERSION: ce-nightly
         run: |
-          make juicefs-image-nightly
+          make fuse-ce-image
       - name: sync image
         env:
           ACR_TOKEN: ${{ secrets.ACR_TOKEN }}
-          JUICEFS_VERSION: nightly
+          IMAGE_TAG: ce-nightly
+        run: |
+          cd ${GITHUB_WORKSPACE}/.github/scripts/
+          ./sync.sh
+  publish-ee-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Login Docker Hub
+        run: docker login registry.cn-hangzhou.aliyuncs.com --username zww@hdls.me --password ${{ secrets.ACR_TOKEN }}
+      - name: Buildx and Push docker image nightly
+        env:
+          EEVERSION: ee-nightly
+        run: |
+          make fuse-ce-image
+      - name: sync image
+        env:
+          ACR_TOKEN: ${{ secrets.ACR_TOKEN }}
+          IMAGE_TAG: ee-nightly
         run: |
           cd ${GITHUB_WORKSPACE}/.github/scripts/
           ./sync.sh
