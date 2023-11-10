@@ -73,7 +73,7 @@ jobs:
       timeout-minutes: 60
       uses: lhotari/action-upterm@v1
 
-  publish-ee-image:
+  publish-ee-4_0-image:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -82,7 +82,59 @@ jobs:
       - name: check latest tag
         continue-on-error: true
         run: |
-          JUICEFS_EE_LATEST_VERSION=$(curl -sSL https://juicefs.com/static/juicefs -o juicefs-ee && chmod +x juicefs-ee && ./juicefs-ee version | cut -d' ' -f3)
+          JUICEFS_EE_LATEST_VERSION=$(curl -sSL https://juicefs.com/static/Linux/mount.4.9 -o juicefs-ee && chmod +x juicefs-ee && ./juicefs-ee -V | cut -d' ' -f3)
+          if [ -z "$JUICEFS_EE_LATEST_VERSION" ]; then
+            echo "Failed to get juicefs ee version"
+            exit 1
+          fi
+          echo "mount image is registry.cn-hangzhou.aliyuncs.com/juicefs/juicefs-fuse:ee-$JUICEFS_EE_LATEST_VERSION"
+          echo "MOUNT_IMAGE_EXIST=false" >> $GITHUB_ENV
+          echo "JUICEFS_EE_LATEST_VERSION=$JUICEFS_EE_LATEST_VERSION" >> $GITHUB_ENV
+          docker pull registry.cn-hangzhou.aliyuncs.com/juicefs/juicefs-fuse:ee-$JUICEFS_EE_LATEST_VERSION
+          rst=$?
+          if [ $rst -eq 0 ]; then
+            echo "MOUNT_IMAGE_EXIST=true" >> $GITHUB_ENV
+          fi
+      - name: Buildx and Push juicefs image
+        env:
+          EEVERSION: ee-${{ env.JUICEFS_EE_LATEST_VERSION }}
+        run: |
+          image_exist=${{ env.MOUNT_IMAGE_EXIST }}
+          if [ $image_exist == "false" ]; then
+            echo "Build JuiceFS new version image"
+            echo "IMAGE_TAG=${EEVERSION}" >> $GITHUB_ENV
+            make fuse-ee-image
+          else
+            echo "JuiceFS mount ee version image already exists"
+          fi
+      - name: sync image
+        env:
+          ACR_TOKEN: ${{ secrets.ACR_TOKEN }}
+        run: |
+          image_exist=${{ env.MOUNT_IMAGE_EXIST }}
+          if [ $image_exist == "false" ]; then
+            echo "Sync JuiceFS version image"
+            cd ${GITHUB_WORKSPACE}/.github/scripts/
+            ./sync.sh
+          else
+            echo "JuiceFS FUSE version image already exists"
+          fi
+      - name: Setup upterm session
+        if: ${{ failure() }}
+        timeout-minutes: 60
+        uses: lhotari/action-upterm@v1
+
+  publish-ee-5_0-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Login Docker Hub
+        run: docker login registry.cn-hangzhou.aliyuncs.com --username zww@hdls.me --password ${{ secrets.ACR_TOKEN }}
+      - name: check latest tag
+        continue-on-error: true
+        run: |
+          curl -sSL https://static.juicefs.com/release/bin_pkgs/latest_stable_fullpkg.tar.gz | tar -xz
+          JUICEFS_EE_LATEST_VERSION=$(grep -oP 'mount_version=\K.*' version.ini)
           if [ -z "$JUICEFS_EE_LATEST_VERSION" ]; then
             echo "Failed to get juicefs ee version"
             exit 1
